@@ -1,0 +1,7 @@
+
+api_id: '123123'
+api_hash: '111111111111111111111111111111'
+phone: '+4204785235'
+database_encryption_key: 'supastrongkey'
+tdlib_verbosity: '1'
+update_interval: 10
