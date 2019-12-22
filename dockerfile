@@ -6,4 +6,4 @@ RUN python3 -m pip install PyYAML
 
 COPY *.py /app/
 
-ENTRYPOINT ["python", "start.py"]
+ENTRYPOINT ["python","-u","start.py"]
