@@ -1,4 +1,5 @@
 import appInit as AppInit
+import simpleLog as Logger
 
 from telegram.client import Telegram
 from datetime import date, datetime
@@ -30,6 +31,7 @@ def edit_api_message(chat_id: int, message_id: int, telegram: Telegram):
 
 
 def send_api_test_message(telegram: Telegram, chat_id: int):
+    Logger.log_info("Send api message")
     api_message = f'api_test_{datetime.now()}'
     telegram.send_message(chat_id, api_message).wait()
 
@@ -50,7 +52,11 @@ def do_shit(telegram: Telegram):
     me = telegram.get_me()
     me.wait()
 
+    Logger.log_info("Getting saved messages chat id")
     saved_messages_chat_id: int = me.update['id']
+    if type(saved_messages_chat_id) is not int or saved_messages_chat_id is "":
+        Logger.log_critical("Saved messages chat id is empty")
+        return False
 
     messages_list = []
     last_message_id = 0
@@ -70,6 +76,8 @@ def do_shit(telegram: Telegram):
         left = left - 1
         # print(last_message_dict)
 
+    Logger.log_info("Got messages list. List length: " + str(len(messages_list)))
+
     api_test_message_dict = None
     for message_dict_data in messages_list:
         if message_dict_data['content']['@type'] != 'messageText':
@@ -84,12 +92,11 @@ def do_shit(telegram: Telegram):
         delete_api_message(saved_messages_chat_id, api_test_message_dict['id'], telegram)
         send_api_test_message(telegram, saved_messages_chat_id)
 
+    return True
 
-if __name__ == '__main__':
-    app_config = AppInit.load_configuration()
-    AppInit.copy_tdlib_cache()
 
-    telegram = Telegram(
+def init_telegram():
+    t = Telegram(
         api_id=app_config.app_id,
         api_hash=app_config.api_hash,
         phone=app_config.phone,
@@ -97,12 +104,30 @@ if __name__ == '__main__':
         tdlib_verbosity=app_config.tdlib_verbosity
     )
 
-    telegram.login()
-    chats = telegram.get_chats()
+    t.login()
+    chats = t.get_chats()
     chats.wait()
 
-    while True:
-        do_shit(telegram)
-        time.sleep(app_config.update_interval)
+    return t
+
+
+def main_loop():
+    try:
+        while True:
+            telegram = init_telegram()
+            while do_shit(telegram):
+                time.sleep(app_config.update_interval)
+    except Exception as e:
+        Logger.log_critical("Something when wrong. Exception message:")
+        Logger.log_critical(e)
+        main_loop()
+
+
+if __name__ == '__main__':
+    app_config = AppInit.load_configuration()
+    AppInit.copy_tdlib_cache()
+
+    main_loop()
+
 
 
