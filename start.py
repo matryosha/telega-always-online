@@ -7,13 +7,17 @@ from datetime import date, datetime
 import time
 
 
-def delete_api_message(chat_id: int, message_id: int, telegram: Telegram):
+def delete_api_messages(chat_id: int, api_messages_list, telegram: Telegram):
+
+    if len(api_messages_list) is 0:
+        return
+
     delete_message_data = {
         '@type': 'deleteMessages',
         'chat_id': chat_id,
-        'message_ids': [message_id]
+        'message_ids': [api_message['id'] for api_message in api_messages_list]
     }
-    res = telegram._send_data(delete_message_data)
+    telegram._send_data(delete_message_data)
 
 
 def edit_api_message(chat_id: int, message_id: int, telegram: Telegram):
@@ -74,23 +78,19 @@ def do_shit(telegram: Telegram):
         messages_list.append(last_message_dict)
         last_message_id = last_message_dict['id']
         left = left - 1
-        # print(last_message_dict)
 
     Logger.log_info("Got messages list. List length: " + str(len(messages_list)))
 
-    api_test_message_dict = None
+    api_test_messages_list = []
     for message_dict_data in messages_list:
         if message_dict_data['content']['@type'] != 'messageText':
             continue
         message_text: str = message_dict_data['content']['text']['text']
         if message_text.startswith('api_test'):
-            api_test_message_dict = message_dict_data
-            break
-    if api_test_message_dict is None:
-        send_api_test_message(telegram, saved_messages_chat_id)
-    else:
-        delete_api_message(saved_messages_chat_id, api_test_message_dict['id'], telegram)
-        send_api_test_message(telegram, saved_messages_chat_id)
+            api_test_messages_list.append(message_dict_data)
+
+    delete_api_messages(saved_messages_chat_id, api_test_messages_list, telegram)
+    send_api_test_message(telegram, saved_messages_chat_id)
 
     return True
 
