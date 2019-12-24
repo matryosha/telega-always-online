@@ -6,18 +6,19 @@ from datetime import date, datetime
 
 import time
 
+default_timeout_sec = 10
+
 
 def delete_api_messages(chat_id: int, api_messages_list, telegram: Telegram):
 
     if len(api_messages_list) is 0:
         return
 
-    delete_message_data = {
-        '@type': 'deleteMessages',
+    telegram.call_method('deleteMessages', {
         'chat_id': chat_id,
         'message_ids': [api_message['id'] for api_message in api_messages_list]
-    }
-    telegram._send_data(delete_message_data)
+    })
+
 
 
 def edit_api_message(chat_id: int, message_id: int, telegram: Telegram):
@@ -31,13 +32,13 @@ def edit_api_message(chat_id: int, message_id: int, telegram: Telegram):
         },
     }
     res = telegram._send_data(edit_message_data)
-    res.wait()
+    res.wait(default_timeout_sec)
 
 
 def send_api_test_message(telegram: Telegram, chat_id: int):
     Logger.log_info("Send api message")
     api_message = f'api_test_{datetime.now()}'
-    telegram.send_message(chat_id, api_message).wait()
+    telegram.send_message(chat_id, api_message).wait(default_timeout_sec)
 
 
 def get_chat_history_data(message_id, chat_id):
@@ -54,7 +55,7 @@ def do_shit(telegram: Telegram):
     # chats = telegram.get_chats(offset_order=2**63 - 1)
 
     me = telegram.get_me()
-    me.wait()
+    me.wait(default_timeout_sec)
 
     Logger.log_info("Getting saved messages chat id")
     saved_messages_chat_id: int = me.update['id']
@@ -69,7 +70,7 @@ def do_shit(telegram: Telegram):
     while left > 0:
         data = get_chat_history_data(last_message_id, saved_messages_chat_id)
         messages_response = telegram._send_data(data=data)
-        messages_response.wait()
+        messages_response.wait(default_timeout_sec)
 
         if len(messages_response.update['messages']) is 0:
             break
@@ -113,21 +114,51 @@ def init_telegram():
 
 def main_loop():
     try:
-        while True:
-            telegram = init_telegram()
-            while do_shit(telegram):
-                time.sleep(app_config.update_interval)
+        runner = TelegramOnlineRunner()
+        runner.start_loop()
     except Exception as e:
         Logger.log_critical("Something when wrong. Exception message:")
         Logger.log_critical(e)
-        main_loop()
+        pass
+
+
+class TelegramOnlineRunner:
+    def __init__(self):
+        self.telegram = init_telegram()
+        self.timeout_error_count = 0
+        self.unknown_error_count = 0
+
+    def start_loop(self):
+        while True:
+            if self.timeout_error_count > 20 or self.unknown_error_count > 10:
+                Logger.log_critical(f"Error threshold reached - "
+                                    f"Timeout error count: {self.timeout_error_count}."
+                                    f"Others error count: {self.unknown_error_count}")
+                raise Exception(
+                    f'Timeout error count: {self.timeout_error_count}. Other error count: {self.unknown_error_count}')
+
+            self._inner_loop()
+
+    def _inner_loop(self):
+        try:
+            while True:
+                do_shit(self.telegram)
+                time.sleep(app_config.update_interval)
+        except TimeoutError as e:
+            self.timeout_error_count = self.timeout_error_count + 1
+            pass
+        except Exception as e:
+            self.unknown_error_count = self.unknown_error_count + 1
+            pass
 
 
 if __name__ == '__main__':
     app_config = AppInit.load_configuration()
     AppInit.copy_tdlib_cache()
 
-    main_loop()
+    while True:
+        main_loop()
+
 
 
 
