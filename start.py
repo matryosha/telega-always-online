@@ -6,8 +6,6 @@ from datetime import date, datetime
 
 import time
 
-default_timeout_sec = 10
-
 
 def delete_api_messages(chat_id: int, api_messages_list, telegram: Telegram):
 
@@ -155,6 +153,7 @@ class TelegramOnlineRunner:
 if __name__ == '__main__':
     app_config = AppInit.load_configuration()
     AppInit.copy_tdlib_cache()
+    default_timeout_sec = app_config.default_timeout
 
     while True:
         main_loop()

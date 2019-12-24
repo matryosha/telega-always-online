@@ -14,6 +14,7 @@ class AppConfig:
     database_encryption_key: str
     tdlib_verbosity: int
     update_interval: int
+    default_timeout: int
 
 
 def load_configuration() -> AppConfig:
@@ -34,6 +35,7 @@ def load_configuration() -> AppConfig:
     app_config.database_encryption_key = config_dict['database_encryption_key']
     app_config.tdlib_verbosity = int(config_dict['tdlib_verbosity'])
     app_config.update_interval = int(config_dict['update_interval'])
+    app_config.default_timeout = int(config_dict['default_timeout'])
     return app_config
 
 

@@ -5,3 +5,4 @@ phone: '+4204785235'
 database_encryption_key: 'supastrongkey'
 tdlib_verbosity: '1'
 update_interval: 10
+default_timeout: '20'
