@@ -6,6 +6,8 @@ from datetime import date, datetime
 
 import time
 
+last_api_message = None
+
 
 def delete_api_messages(chat_id: int, api_messages_list, telegram: Telegram):
 
@@ -14,7 +16,7 @@ def delete_api_messages(chat_id: int, api_messages_list, telegram: Telegram):
 
     telegram.call_method('deleteMessages', {
         'chat_id': chat_id,
-        'message_ids': [api_message['id'] for api_message in api_messages_list]
+        'message_ids': list(set([api_message['id'] for api_message in api_messages_list]))
     })
 
 
@@ -34,9 +36,14 @@ def edit_api_message(chat_id: int, message_id: int, telegram: Telegram):
 
 
 def send_api_test_message(telegram: Telegram, chat_id: int):
+    global last_api_message
+
     Logger.log_info("Send api message")
     api_message = f'api_test_{datetime.now()}'
-    telegram.send_message(chat_id, api_message).wait(default_timeout_sec)
+    sent_api_message = telegram.send_message(chat_id, api_message)
+    sent_api_message.wait(default_timeout_sec)
+
+    last_api_message = sent_api_message.update
 
 
 def get_chat_history_data(message_id, chat_id):
@@ -87,6 +94,9 @@ def do_shit(telegram: Telegram):
         message_text: str = message_dict_data['content']['text']['text']
         if message_text.startswith('api_test'):
             api_test_messages_list.append(message_dict_data)
+
+    if last_api_message is not None:
+        api_test_messages_list.append(last_api_message)
 
     delete_api_messages(saved_messages_chat_id, api_test_messages_list, telegram)
     send_api_test_message(telegram, saved_messages_chat_id)
